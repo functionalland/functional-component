@@ -1,44 +1,53 @@
-import { maybeCall } from "./utilities.js";
+import { maybeCall, parseSpineCaseToCamelCase } from "./utilities.js";
 
 export const StateSymbol = Symbol.for("iy-state");
 
-const asyncRender = (element, render, observedAttributes) => (setAttribute) => (event) => {
-  if (!observedAttributes) return;
+const asyncRender = (element, render, observedAttributes) =>
+  (setAttribute) =>
+    (event) => {
+      if (!observedAttributes) return;
 
-  const state =
-    setAttribute(element, Object.assign({}, element[StateSymbol]), event) ||
-    {};
-  let z = false;
+      const state =
+        setAttribute(element, Object.assign({}, element[StateSymbol]), event) ||
+        {};
+      let z = false;
 
-  for (const k in state) {
-    const isFromDataset = observedAttributes.includes(`data-${k}`);
-    const isObservedAttribute = isFromDataset || observedAttributes.includes(k);
+      for (const k in state) {
+        const isFromDataset = observedAttributes.includes(`data-${k}`);
+        const isObservedAttribute = isFromDataset ||
+          observedAttributes.includes(k);
 
-    if (
-      isObservedAttribute &&
-      element.validateAttribute &&
-      !element.validateAttribute(
-        { name: (isFromDataset) ? `data-${k}` : k, oldValue: element[StateSymbol][k], value: state[k] },
-        element,
-        Object.assign({}, element[StateSymbol])
-      )
-    ) continue;
+        if (
+          isObservedAttribute &&
+          element.validateAttribute &&
+          !element.validateAttribute(
+            {
+              name: (isFromDataset) ? `data-${k}` : k,
+              oldValue: element[StateSymbol][k],
+              value: state[k],
+            },
+            element,
+            Object.assign({}, element[StateSymbol]),
+          )
+        ) {
+          continue;
+        }
 
-    element[StateSymbol][k] = state[k];
+        element[StateSymbol][k] = state[k];
 
-    if (isFromDataset) {
-      element.dataset[k] = state[k];
-    } else if (isObservedAttribute) {
-      element.setAttribute(k, state[k]);
-    } else {
-      z = true;
-    }
-  }
+        if (isFromDataset) {
+          element.dataset[k] = state[k];
+        } else if (isObservedAttribute) {
+          element.setAttribute(k, state[k]);
+        } else {
+          z = true;
+        }
+      }
 
-  if (z) {
-    render(element, Object.assign({}, element[StateSymbol]));
-  }
-};
+      if (z) {
+        render(element, Object.assign({}, element[StateSymbol]));
+      }
+    };
 
 const factorizeFunctionalComponentClass = (TargetConstructor = HTMLElement) => (
   class FunctionalComponent extends TargetConstructor {
@@ -53,13 +62,6 @@ const factorizeFunctionalComponentClass = (TargetConstructor = HTMLElement) => (
     }
   }
 );
-
-const parsePascalCaseToSpineCase = (x) =>
-  x.split(/(?=[A-Z0-9])/).join('-').toLowerCase();
-
-const parseSpineCaseToCamelCase = (x) =>
-  x.replace(/(\-\w)/g, (m) => m[1].toUpperCase())
-
 
 const parseDatasetToState = (d) =>
   parseSpineCaseToCamelCase(d.replace(/^data-/, ""));
@@ -83,14 +85,16 @@ const wrapRender = (render) => {
     if (!r) {
       rs.set(e, true);
 
-      window.requestAnimationFrame(() => {
+      globalThis.requestAnimationFrame(() => {
         const ss = ms.get(e);
         const state = Object.assign({}, ...ss);
         const t = performance.now();
 
         render(e, state);
         e.dispatchEvent(
-          new CustomEvent("render", { detail: { state, time: performance.now() - t, ...options } })
+          new CustomEvent("render", {
+            detail: { state, time: performance.now() - t, ...options },
+          }),
         );
 
         ss.length = 0;
@@ -182,8 +186,8 @@ export const factorizeComponent = (render, state, ...fs) => {
           (e) => {
             e[StateSymbol] = Object.assign({}, state);
           },
-          ...constructors
-        ]
+          ...constructors,
+        ],
       ],
       new.target || FunctionalComponent,
     );
@@ -201,7 +205,7 @@ export const factorizeComponent = (render, state, ...fs) => {
       },
       set() {
       },
-    }
+    },
   );
 
   const _render = wrapRender(render);
@@ -228,10 +232,13 @@ export const factorizeComponent = (render, state, ...fs) => {
       value() {
         return maybeCall(_connectedCallback, this)
           .then(() => {
-            _render(this, Object.assign({}, this[StateSymbol]), { name: "connectedCallback", data: {} });
+            _render(this, Object.assign({}, this[StateSymbol]), {
+              name: "connectedCallback",
+              data: {},
+            });
           });
-      }
-    }
+      },
+    },
   );
 
   return Component;
@@ -248,22 +255,24 @@ export const factorizeComponent = (render, state, ...fs) => {
  *   });
  * ```
  */
-export const fetchTemplate = (templatePath) => () =>
-  fetch(templatePath)
-    .then((response) => response.text().then((t) => {
-      if (response.ok) {
-        return t
-      } else {
-        return Promise.reject(new Error(t));
-      }
-    }))
-    .then((html) => {
-      const e = window.document.createElement("template");
-      e.innerHTML = html;
+export const fetchTemplate = (templatePath) =>
+  () =>
+    fetch(templatePath)
+      .then((response) =>
+        response.text().then((t) => {
+          if (response.ok) {
+            return t;
+          } else {
+            return Promise.reject(new Error(t));
+          }
+        })
+      )
+      .then((html) => {
+        const e = window.document.createElement("template");
+        e.innerHTML = html;
 
-      return e;
-    });
-
+        return e;
+      });
 
 /**
  * Creates a reactive lifecycle with a simple state reducer.
@@ -322,97 +331,104 @@ export const fetchTemplate = (templatePath) => () =>
  * );
  * ```
  */
-export const useAttributes = (validateAttribute, map) => (factorize) => {
-  factorize((Component, render) => {
-    const _attributeChangedCallback = Component.prototype.attributeChangedCallback;
-    const _connectedCallback = Component.prototype.connectedCallback;
-    const observedAttributes = Object.keys(map);
-    Object.defineProperty(
-      Component,
-      "observedAttributes",
-      {
-        enumerable: true,
-        value: observedAttributes,
-      },
-    );
-    Object.defineProperties(
-      Component.prototype,
-      {
-        attributeChangedCallback: {
-          configurable: true,
+export const useAttributes = (validateAttribute, map = {}) =>
+  (factorize) => {
+    factorize((Component, render) => {
+      const _attributeChangedCallback =
+        Component.prototype.attributeChangedCallback;
+      const _connectedCallback = Component.prototype.connectedCallback;
+      const observedAttributes = Object.keys(map);
+      Object.defineProperty(
+        Component,
+        "observedAttributes",
+        {
           enumerable: true,
-          value(name, oldValue, value) {
-            let state = validateAttribute(
-              {
-                name: name,
-                oldValue: Reflect.has(map, name)
-                  ? map[name](oldValue)
-                  : oldValue,
-                value: Reflect.has(map, name)
-                  ? map[name](value)
-                  : value,
-              },
-              this,
-              Object.assign({}, this[StateSymbol]),
-            );
-
-            this.dispatchEvent(
-              new CustomEvent(
-                "change:attribute",
+          value: observedAttributes,
+        },
+      );
+      Object.defineProperties(
+        Component.prototype,
+        {
+          attributeChangedCallback: {
+            configurable: true,
+            enumerable: true,
+            value(name, oldValue, value) {
+              const state = validateAttribute(
                 {
-                  detail: {
-                    attribute: { name, oldValue, value },
-                    state
+                  name: name,
+                  oldValue: Reflect.has(map, name)
+                    ? map[name](oldValue)
+                    : oldValue,
+                  value: Reflect.has(map, name) ? map[name](value) : value,
+                },
+                this,
+                Object.assign({}, this[StateSymbol]),
+              );
+
+              this.dispatchEvent(
+                new CustomEvent(
+                  "change:attribute",
+                  {
+                    detail: {
+                      attribute: { name, oldValue, value },
+                      state,
+                    },
+                  },
+                ),
+              );
+              if (state) {
+                if (state === true) {
+                  const z = parseDatasetToState(name);
+                  this[StateSymbol][z] = Reflect.has(map, name)
+                    ? map[name](value)
+                    : value;
+                } else {
+                  for (const k in state) {
+                    if (!Object.prototype.hasOwnProperty.call(state, k)) {
+                      continue;
+                    }
+
+                    const z = parseDatasetToState(k);
+                    this[StateSymbol][z] = state[k];
                   }
-                })
-            );
-            if (state) {
-              if (state === true) {
-                const z = parseDatasetToState(name);
-                this[StateSymbol][z] = Reflect.has(map, name) ? map[name](value) : value;
-              } else {
-                for (const k in state) {
-                  if (!state.hasOwnProperty(k)) continue;
-
-                  const z = parseDatasetToState(k);
-                  this[StateSymbol][z] = state[k];
                 }
+                render(this, Object.assign({}, this[StateSymbol]), {
+                  name: "attributes",
+                  data: { name, oldValue, value },
+                });
               }
-              render(this, Object.assign({}, this[StateSymbol]), { name: "attributes", data: { name, oldValue, value } });
-            }
 
-            _attributeChangedCallback && _attributeChangedCallback.call(this, name, oldValue, value);
-          }
+              _attributeChangedCallback &&
+                _attributeChangedCallback.call(this, name, oldValue, value);
+            },
+          },
+          connectedCallback: {
+            configurable: true,
+            enumerable: true,
+            value() {
+              return maybeCall(_connectedCallback, this)
+                .then(() => {
+                  for (const key of observedAttributes) {
+                    const normalizedKey = parseDatasetToState(key);
+                    const value = map[normalizedKey]
+                      ? map[normalizedKey](
+                        this.getAttribute(key),
+                      )
+                      : this.getAttribute(key);
+                    if (value) this[StateSymbol][normalizedKey] = value;
+                  }
+                });
+            },
+          },
+          validateAttribute: {
+            configurable: true,
+            enumerable: false,
+            value: validateAttribute,
+          },
         },
-        connectedCallback: {
-          configurable: true,
-          enumerable: true,
-          value() {
-
-            return maybeCall(_connectedCallback, this)
-              .then(() => {
-                for (const key of observedAttributes) {
-                  const normalizedKey = parseDatasetToState(key);
-                  const value = map[normalizedKey]
-                    ? map[normalizedKey](
-                      this.getAttribute(key),
-                    )
-                    : this.getAttribute(key);
-                  if (value) this[StateSymbol][normalizedKey] = value;
-                }
-
-              });
-          }
-        },
-        validateAttribute: {
-          configurable: true,
-          enumerable: false,
-          value: validateAttribute
-        }
-      }
-    )
-  });
-}
+      );
+    });
+  };
 
 /**
  * Hooks into the component's lifecycle. Learn more about [lifecycle callbacks on MDN](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#using_the_lifecycle_callbacks)
@@ -476,61 +492,73 @@ export const useAttributes = (validateAttribute, map) => (factorize) => {
  * );
  * ```
  */
-export const useCallbacks = (callbacks) => (factorize) => {
-  factorize((Component, render) => {
-    for (const k in callbacks) {
-      if (!callbacks.hasOwnProperty(k)) continue;
-      const f = callbacks[k];
-      if (!f) continue;
-      const g = Component.prototype[k];
+export const useCallbacks = (callbacks) =>
+  (factorize) => {
+    factorize((Component, render) => {
+      for (const k in callbacks) {
+        if (!Object.prototype.hasOwnProperty.call(callbacks, k)) continue;
+        const f = callbacks[k];
+        if (!f) continue;
+        const g = Component.prototype[k];
 
-      Object.defineProperty(
+        Object.defineProperty(
+          Component.prototype,
+          k,
+          {
+            configurable: true,
+            enumerable: true,
+            value(...xs) {
+              return maybeCall(g, this, ...xs)
+                .then(() =>
+                  f(
+                    this,
+                    ...xs,
+                    asyncRender(
+                      this,
+                      render,
+                      Component.observedAttributes || [],
+                    ),
+                  )
+                );
+            },
+          },
+        );
+      }
+
+      return Component;
+    });
+  };
+
+export const useProperties = (ps) =>
+  (factorize) => {
+    factorize((Component, render) => {
+      Object.defineProperties(
         Component.prototype,
-        k,
-        {
-          configurable: true,
-          enumerable: true,
-          value(...xs) {
-
-            return maybeCall(g, this, ...xs)
-              .then(() => f(this, ...xs, asyncRender(this, render, Component.observedAttributes || [])));
-          }
-        }
-      );
-    }
-
-    return Component;
-  });
-};
-
-export const useProperties = (ps) => (factorize) => {
-  factorize((Component, render) => {
-    Object.defineProperties(
-      Component.prototype,
-      ps
-        .reduce(
-          (o, name) => Object.defineProperty(
-            o,
-            name,
-            {
-              enumerable: true,
-              value: {
-                get() {
-                  return this[StateSymbol][name]
+        ps
+          .reduce(
+            (o, name) =>
+              Object.defineProperty(
+                o,
+                name,
+                {
+                  enumerable: true,
+                  value: {
+                    get() {
+                      return this[StateSymbol][name];
+                    },
+                    set(v) {
+                      this[StateSymbol][name] = v;
+                      render(this, Object.assign({}, this[StateSymbol]));
+                    },
+                  },
+                  writable: true,
                 },
-                set(v) {
-                  this[StateSymbol][name] = v
-                  render(this, Object.assign({}, this[StateSymbol]));
-                }
-              },
-              writable: true,
-            }
+              ),
+            {},
           ),
-          {}
-        )
-    )
-  });
-};
+      );
+    });
+  };
 
 /**
  * Attaches a shadow root to every instance of the Component.
@@ -549,9 +577,10 @@ export const useProperties = (ps) => (factorize) => {
  * );
  * ```
  */
-export const useShadow = (options = { mode: "open" }) => (_, contruct) => {
-  contruct((e) => e.attachShadow(options));
-};
+export const useShadow = (options = { mode: "open" }) =>
+  (_, contruct) => {
+    contruct((e) => e.attachShadow(options));
+  };
 
 /**
  * Automatically appends a clone of a template to the element or the element's shadow root.
@@ -588,44 +617,44 @@ export const useShadow = (options = { mode: "open" }) => (_, contruct) => {
  * );
  * ```
  */
-export const useTemplate = (f, map) => (factorize) => {
-  factorize((Component) => {
-    const _connectedCallback = Component.prototype.connectedCallback;
-    Object.defineProperty(
-      Component.prototype,
-      "connectedCallback",
-      {
-        configurable: true,
-        enumerable: true,
-        value() {
-
-          return maybeCall(_connectedCallback, this)
-            .then(() => maybeCall(f))
-            .then((template) => {
-              (this.shadowRoot || this).appendChild(
-                template.content.cloneNode(true),
-              );
-
-              if (map) {
-                Object.defineProperty(
-                  this,
-                  "elements",
-                  {
-                    enumerable: false,
-                    value: {}
-                  }
+export const useTemplate = (f, map) =>
+  (factorize) => {
+    factorize((Component) => {
+      const _connectedCallback = Component.prototype.connectedCallback;
+      Object.defineProperty(
+        Component.prototype,
+        "connectedCallback",
+        {
+          configurable: true,
+          enumerable: true,
+          value() {
+            return maybeCall(_connectedCallback, this)
+              .then(() => maybeCall(f))
+              .then((template) => {
+                (this.shadowRoot || this).appendChild(
+                  template.content.cloneNode(true),
                 );
 
-                for (const k in map) {
-                  if (!map.hasOwnProperty(k)) continue;
-                  this.elements[k] = map[k](this);
-                }
+                if (map) {
+                  Object.defineProperty(
+                    this,
+                    "elements",
+                    {
+                      enumerable: false,
+                      value: {},
+                    },
+                  );
 
-                Object.freeze(this.elements);
-              }
-            });
-        }
-      }
-    );
-  });
-};
+                  for (const k in map) {
+                    if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
+                    this.elements[k] = map[k](this);
+                  }
+
+                  Object.freeze(this.elements);
+                }
+              });
+          },
+        },
+      );
+    });
+  };

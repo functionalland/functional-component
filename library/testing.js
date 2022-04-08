@@ -38,7 +38,7 @@ export const factorizeSpy = (f = () => undefined) => {
     },
     Object.defineProperties(
       (g) => {
-        xs.forEach((ys, i, zs) => g(...ys, i, zs));
+        xs.forEach((ys, i, zs) => g(ys, i, zs));
       },
       {
         callCount: {
@@ -66,15 +66,19 @@ export const test = (name, f) => {
 };
 
 export const withDom = (f) => {
-  if (!window.requestAnimationFrame) {
-    window.requestAnimationFrame = (f) => setTimeout(f);
+  if (!globalThis.requestAnimationFrame) {
+    globalThis.requestAnimationFrame = (f) => setTimeout(f);
   }
 
   if (window.HTMLElement) return f;
 
   return () =>
-    Promise.all([ "https://esm.sh/htmlparser2", "https://esm.sh/domhandler" ].map((x) => import(x)))
-      .then(([ { Parser }, { DomHandler } ]) => {
+    Promise.all(
+      ["https://esm.sh/htmlparser2", "https://esm.sh/domhandler"].map((x) =>
+        import(x)
+      ),
+    )
+      .then(() => {
         const noop = (_) => undefined;
 
         const factorizeHTMLElement = (f = (x) => x) => {
@@ -89,7 +93,6 @@ export const withDom = (f) => {
           }
 
           appendChild() {
-
           }
 
           attachShadow() {
@@ -97,7 +100,6 @@ export const withDom = (f) => {
           }
 
           dispatchEvent() {
-
           }
 
           getAttribute(n) {
@@ -119,8 +121,8 @@ export const withDom = (f) => {
         window.document = window.document || {};
 
         window.document.createElement = (selector) =>
-          (selector === "template") ?
-            factorizeHTMLElement(
+          (selector === "template")
+            ? factorizeHTMLElement(
               (t) =>
                 Object.defineProperty(
                   t,
@@ -128,12 +130,12 @@ export const withDom = (f) => {
                   {
                     enumerable: true,
                     value: {
-                      cloneNode: () => new window.HTMLElement()
-                    }
-                  }
-                )
-            ) :
-            factorizeHTMLElement(
+                      cloneNode: () => new window.HTMLElement(),
+                    },
+                  },
+                ),
+            )
+            : factorizeHTMLElement(
               (t) =>
                 Object.defineProperties(
                   t,

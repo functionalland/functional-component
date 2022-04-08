@@ -1,6 +1,6 @@
 const { Deno } = globalThis;
 const noColor = typeof Deno?.noColor === "boolean" ? Deno.noColor : true;
-let enabled = !noColor;
+const enabled = !noColor;
 function code(open, close) {
   return {
     open: `\x1b[${open.join(";")}m`,
@@ -82,7 +82,7 @@ const ANSI_PATTERN = new RegExp(
 function stripColor(string) {
   return string.replace(ANSI_PATTERN, "");
 }
-var DiffType;
+let DiffType;
 (function (DiffType1) {
   DiffType1["removed"] = "removed";
   DiffType1["common"] = "common";
