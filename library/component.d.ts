@@ -30,21 +30,23 @@ export declare enum Callbacks {
   "disconnectedCallback",
 }
 
+type ValueOf<T> = T[keyof T];
+
 export function factorizeComponent<
-  S extends State,
   E extends CustomElement = CustomElement,
+  S extends State,
 >(
-  render: (element: E, state: State) => void,
-  state: State,
+  render: (element: E, state: S) => void,
+  state: S,
   ...fs: Array<HOF<E, S>>
 ): Constructor<E>;
 
 export function useAttributes<E extends CustomElement, S extends State>(
-  validateAttribute: <X>(
-    attributes: { name: string; oldValue: X; value: X },
+  validateAttribute: <X extends ValueOf<S>>(
+    attributes: { name: keyof S; oldValue: X; value: X },
     element?: E,
     state?: S,
-  ) => S | boolean,
+  ) => Partial<S> | boolean,
   map?: { [K in keyof S]: (x: string) => S[K] },
 ): HOF<E, S>;
 
@@ -71,5 +73,5 @@ export function useShadow<E extends CustomElement, S extends State>(
 
 export function useTemplate<E extends CustomElement, S extends State>(
   getTemplate: () => HTMLTemplateElement,
-  map: { [k: string]: (e: E) => CustomElement },
+  map?: { [k: string]: (e: E) => CustomElement },
 ): HOF<E, S>;

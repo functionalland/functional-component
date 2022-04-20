@@ -1,13 +1,16 @@
 import { Constructor, CustomElement } from "./component.d.ts";
 
-type ArgumentTypes<F extends (...xs: Array<unknown>) => unknown> = F extends (...args: infer A) => unknown ? A
+type ArgumentTypes<F extends (...xs: Array<unknown>) => unknown> = F extends
+  (...args: infer A) => unknown ? A
   : never;
 
 export function constructComponent<E extends CustomElement>(
   C: Constructor<E>,
 ): E;
 
-export function factorizeSpy<F extends (...xs: Array<unknown>) => unknown>(f?: F): [
+export function factorizeSpy<F extends (...xs: Array<unknown>) => unknown>(
+  f?: F,
+): [
   F,
   {
     (

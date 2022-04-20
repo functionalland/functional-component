@@ -44,6 +44,8 @@ export const maybeCall = (f, e, ...xs) => {
   return (p instanceof Promise ? p : Promise.resolve(p));
 };
 
+export const noop = (..._) => undefined;
+
 export const parseSelectorForElement = (e) => {
   const as = [e.localName];
   for (const { name, value } of e.attributes) {

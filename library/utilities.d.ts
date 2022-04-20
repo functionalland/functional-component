@@ -31,6 +31,8 @@ export function maybeCall<X, Y, E extends HTMLElement, XS extends Array<X>>(
   ...xs: XS
 ): Promise<Y | false>;
 
+export function noop(..._: Array<unknown>): void;
+
 export function parsePascalCaseToSpineCase(x: string): string;
 
 export function parseSpineCaseToCamelCase(x: string): string;
