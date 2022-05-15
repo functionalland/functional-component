@@ -32,6 +32,13 @@ export const disconnectAllElements = (e) => {
   }
 };
 
+export const factorizeTemplate = (html) =>
+  (document) => {
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    return t;
+  };
+
 export const intersects = (xs, ys) =>
   ys && ys.reduce(
       (b, y) => !xs.includes(y) ? false : b,
@@ -90,7 +97,7 @@ export const parsePascalCaseToSpineCase = (x) =>
   x.split(/(?=[A-Z0-9])/).join("-").toLowerCase();
 
 export const parseSpineCaseToCamelCase = (x) =>
-  x.replace(/(\-\w)/g, (m) => m[1].toUpperCase());
+  x.replace(/(-\w)/g, (m) => m[1].toUpperCase());
 
 /**
  * Renders elements given an iterable.

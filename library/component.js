@@ -185,6 +185,19 @@ export const factorizeComponent = (render, state, ...fs) => {
         [
           (e) => {
             e[StateSymbol] = Object.assign({}, state);
+
+            Object.defineProperty(
+              e,
+              "state",
+              {
+                get() {
+                  return this[StateSymbol];
+                },
+                set(s) {
+                  render(this, Object.assign({}, this[StateSymbol], s));
+                },
+              },
+            );
           },
           ...constructors,
         ],
@@ -195,18 +208,6 @@ export const factorizeComponent = (render, state, ...fs) => {
 
   Object.setPrototypeOf(Component.prototype, FunctionalComponent.prototype);
   Object.setPrototypeOf(Component, FunctionalComponent);
-
-  Object.defineProperty(
-    Component.prototype,
-    "state",
-    {
-      get() {
-        return this[StateSymbol];
-      },
-      set() {
-      },
-    },
-  );
 
   const _render = wrapRender(render);
 
@@ -231,8 +232,9 @@ export const factorizeComponent = (render, state, ...fs) => {
       enumerable: false,
       value() {
         return maybeCall(_connectedCallback, this)
-          .then(() => {
-            _render(this, Object.assign({}, this[StateSymbol]), {
+          .then((s = {}) => {
+            this[StateSymbol] = Object.assign({}, state, s);
+            _render(this, this[StateSymbol], {
               name: "connectedCallback",
               data: {},
             });
@@ -512,12 +514,12 @@ export const useCallbacks = (callbacks) =>
                 .then(() =>
                   f(
                     this,
-                    ...xs,
                     asyncRender(
                       this,
                       render,
                       Component.observedAttributes || [],
                     ),
+                    ...xs,
                   )
                 );
             },

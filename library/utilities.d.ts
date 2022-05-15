@@ -23,6 +23,10 @@ export function deferUntilNextFrame(): Promise<void>;
 
 export function disconnectAllElements<E extends HTMLElement>(e: E): void;
 
+export function factorizeTemplate(
+  html: string,
+): (document: HTMLDocument) => HTMLTemplateElement;
+
 export function intersects(xs: Array<unknown>, ys: Array<unknown>): boolean;
 
 export function maybeCall<X, Y, E extends HTMLElement, XS extends Array<X>>(

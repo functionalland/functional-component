@@ -27,4 +27,7 @@ export function factorizeSpy<F extends (...xs: Array<unknown>) => unknown>(
 
 export function test(name: string, f: () => void): void;
 
-export function withDom(f: () => void): () => Promise<void>;
+export function withDom(
+  f: (document: HTMLDocument) => void,
+  t?: string,
+): () => Promise<void>;
