@@ -1,4 +1,4 @@
-import { randomUUID } from "./utilities.js";
+import { maybeCall, randomUUID } from "./utilities.js";
 
 export const TestsSymbol = Symbol.for("iy-tests");
 
@@ -38,7 +38,7 @@ export const factorizeSpy = (f = () => undefined) => {
     },
     Object.defineProperties(
       (g) => {
-        xs.forEach((ys, i, zs) => g(...ys, i, zs));
+        xs.forEach((ys, i, zs) => g(ys, i, zs));
       },
       {
         callCount: {
@@ -65,91 +65,26 @@ export const test = (name, f) => {
   tests.set(f, { name });
 };
 
-export const withDom = (f) => {
-  if (!window.requestAnimationFrame) {
-    window.requestAnimationFrame = (f) => setTimeout(f);
+export const withDom = (f, template = "<div></div>") => {
+  if (!globalThis.requestAnimationFrame) {
+    globalThis.requestAnimationFrame = (f) => setTimeout(f);
   }
 
-  if (window.HTMLElement) return f;
+  if (globalThis.HTMLElement) return f;
 
   return () =>
-    Promise.all([ "https://esm.sh/htmlparser2", "https://esm.sh/domhandler" ].map((x) => import(x)))
-      .then(([ { Parser }, { DomHandler } ]) => {
-        const noop = (_) => undefined;
+    Promise.all(
+      ["https://deno.land/x/deno_dom@v0.1.26-alpha/deno-dom-wasm.ts"].map((x) =>
+        import(x)
+      ),
+    )
+      .then(([{ DOMParser, Element }]) => {
+        const document = new DOMParser().parseFromString(template, "text/html");
 
-        const factorizeHTMLElement = (f = (x) => x) => {
-          return f(new window.HTMLElement());
-        };
+        globalThis.HTMLElement = class HTMLElement extends Element {};
+        globalThis.document = document;
 
-        window.HTMLElement = class {
-          #state = {};
-
-          constructor() {
-            this.observedAttributes = this.constructor.observedAttributes;
-          }
-
-          appendChild() {
-
-          }
-
-          attachShadow() {
-            this.shadowRoot = new window.HTMLElement();
-          }
-
-          dispatchEvent() {
-
-          }
-
-          getAttribute(n) {
-            return this.#state[n];
-          }
-
-          querySelector() {
-            return new window.HTMLElement();
-          }
-
-          setAttribute(n, v) {
-            if (Reflect.get(this, "observedAttributes")?.includes(n)) {
-              this.attributeChangedCallback(n, this.#state[n], v);
-            }
-            this.#state[n] = v;
-          }
-        };
-
-        window.document = window.document || {};
-
-        window.document.createElement = (selector) =>
-          (selector === "template") ?
-            factorizeHTMLElement(
-              (t) =>
-                Object.defineProperty(
-                  t,
-                  "content",
-                  {
-                    enumerable: true,
-                    value: {
-                      cloneNode: () => new window.HTMLElement()
-                    }
-                  }
-                )
-            ) :
-            factorizeHTMLElement(
-              (t) =>
-                Object.defineProperties(
-                  t,
-                  {
-                    "innerHTML": {
-                      set(x) {
-                        noop(x);
-                      },
-                    },
-                  },
-                ),
-            );
-
-        const p = f();
-
-        return (p instanceof Promise ? p : Promise.resolve(p))
+        return maybeCall(f, null, document)
           .finally(() => {
             window.HTMLElement = undefined;
             window.document = undefined;

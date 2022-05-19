@@ -12,7 +12,12 @@ import {
   stripColor,
   white,
 } from "https://deno.land/std@0.105.0/fmt/colors.ts";
-import { diff, DiffResult, diffstr, DiffType } from "https://deno.land/std@0.105.0/testing/_diff.ts";
+import {
+  diff,
+  DiffResult,
+  diffstr,
+  DiffType,
+} from "https://deno.land/std@0.105.0/testing/_diff.ts";
 
 const CAN_NOT_DISPLAY = "[Cannot display]";
 

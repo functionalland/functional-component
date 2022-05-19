@@ -1,25 +1,29 @@
 # Functional Component
 
 This is an experiemental project. The goal is to build a rendering framework
-leveraging the [web components API](https://developer.mozilla.org/en-US/docs/Web/Web_Components).
+leveraging the
+[web components API](https://developer.mozilla.org/en-US/docs/Web/Web_Components).
 If you don't know what to do with it... it's okay.
 
 ## API
 
 ### `factorizeComponent`
 
-Factorizes a component given a render function, a state and an arbitrary number of composable functions.
+Factorizes a component given a render function, a state and an arbitrary number
+of composable functions.
 
-The first argument is a render function. The function is called once when the component is connected to the DOM.
-The render function should accept two parameters, the first one is the element that is being rendered.
-The second parameter is the current state that should be used to render the component.
+The first argument is a render function. The function is called once when the
+component is connected to the DOM. The render function should accept two
+parameters, the first one is the element that is being rendered. The second
+parameter is the current state that should be used to render the component.
 
-The second argument to the `factorizeComponent` function is an object that will be used as the inital state.
+The second argument to the `factorizeComponent` function is an object that will
+be used as the inital state.
 
-`State :: Object`  
-`R :: (DOMElement, State) -> void`  
-`F :: (((Component, R, State) -> C) -> void, ((DOMElement) -> E) -> void) -> void`  
-`factorizeComponent :: ((DOMElement, State) -> void, State, [...F]) -> Component`  
+`State :: Object`\
+`R :: (DOMElement, State) -> void`\
+`F :: (((Component, R, State) -> C) -> void, ((DOMElement) -> E) -> void) -> void`\
+`factorizeComponent :: ((DOMElement, State) -> void, State, [...F]) -> Component`
 
 ```js
 window.customElements.define(
@@ -30,23 +34,24 @@ window.customElements.define(
       h1.textContent = title;
       e.appendChild(e);
     },
-    { title: "Bluebird" }
-  )
+    { title: "Bluebird" },
+  ),
 );
 ```
 
 #### Higher-order-function
 
-The `factorizeComponent` also accepts an arbitrary amount of functions as arguments.
-Those higher-order-functions should accept 2 parameters; the first one is named `factorize`, the second is named
-`construct`.
+The `factorizeComponent` also accepts an arbitrary amount of functions as
+arguments. Those higher-order-functions should accept 2 parameters; the first
+one is named `factorize`, the second is named `construct`.
 
-Both HOFs accepts a function that will be called, respectively, at the factory phase, before the component is
-initialize, and, at the construction phase, when the component is being instantiated.
+Both HOFs accepts a function that will be called, respectively, at the factory
+phase, before the component is initialize, and, at the construction phase, when
+the component is being instantiated.
 
-The factorize function has three parameters; the first parameter is a Component constructor;
-the second parameter is the render function which can be called to queue a render request;
-the third parameter is the initial state.
+The factorize function has three parameters; the first parameter is a Component
+constructor; the second parameter is the render function which can be called to
+queue a render request; the third parameter is the initial state.
 
 ```js
 window.customElements.define(
@@ -65,7 +70,7 @@ window.customElements.define(
             value() {
               render(this);
             },
-          }
+          },
         );
 
         return Component;
@@ -73,8 +78,8 @@ window.customElements.define(
       construct((element) => {
         element.dataset.forceRender = true;
       });
-    }
-  )
+    },
+  ),
 );
 ```
 
@@ -92,33 +97,37 @@ fetchTemplate("/demo.html")()
 
 ### `useAttributes`
 
-Creates a reactive lifecycle with a simple state reducer.
-When a user or a program sets an attribute of the component, the validation function is called which decides if the
-component should be rendered again.
+Creates a reactive lifecycle with a simple state reducer. When a user or a
+program sets an attribute of the component, the validation function is called
+which decides if the component should be rendered again.
 
-The `useAttributes` function accepts a function to validate an observed attributes value and create a new state. The
-validation function should have three parameters. The first one is an object representing the attribute that was
-changed, the second is the element that is affected and the last is the current state of the element. The validation
-function shoudl return a state fragment or false to cancel the render.
+The `useAttributes` function accepts a function to validate an observed
+attributes value and create a new state. The validation function should have
+three parameters. The first one is an object representing the attribute that was
+changed, the second is the element that is affected and the last is the current
+state of the element. The validation function shoudl return a state fragment or
+false to cancel the render.
 
-The hook function also takes a map object for all of the attributes to observe.The value is a function to transform
-the value before the validation function called. If not transformation is needed, just pass the identity function.
-`(x) => x`
+The hook function also takes a map object for all of the attributes to
+observe.The value is a function to transform the value before the validation
+function called. If not transformation is needed, just pass the identity
+function. `(x) => x`
 
 ```js
 window.customElements.define(
   "iy-demo",
   factorizeComponent(
     (element, { value }) => {
-     const span = element.querySelector("span");
-     span.textContent = String(value);
+      const span = element.querySelector("span");
+      span.textContent = String(value);
     },
     { value: 0 },
     useAttributes(
-      ({ oldValue, value }) => (oldValue !== value && value >= 0) ? ({ value }) : false,
+      ({ oldValue, value }) =>
+        (oldValue !== value && value >= 0) ? ({ value }) : false,
       {
-        value: Number
-      }
+        value: Number,
+      },
     ),
     (factorize) => {
       factorize((Component) => {
@@ -143,24 +152,28 @@ window.customElements.define(
         );
         return Component;
       });
-    }
-  )
+    },
+  ),
 );
 ```
 
 ### `useCallbacks`
 
-Hooks into the component's lifecycle. Learn more about [lifecycle callbacks on MDN](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#using_the_lifecycle_callbacks)
+Hooks into the component's lifecycle. Learn more about
+[lifecycle callbacks on MDN](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements#using_the_lifecycle_callbacks)
 
-The function accepts as argument an object of function to hook into one of the following callback:
-`connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` and `adoptedCallback`.
+The function accepts as argument an object of function to hook into one of the
+following callback: `connectedCallback`, `disconnectedCallback`,
+`attributeChangedCallback` and `adoptedCallback`.
 
-Each callback function will be called when appropriate with the element, the relevant options and a `asyncRender`
-function as arguments.
-The `asyncRender` function can be called at any moment with a "state setter" function. This returns a thunk function
-that may accept an argument. When the thunk function is called, the "state setter" function is called with the
-current element and state as argument. This function should return a state fragment or false. The state fragment is
-then merged with the current state and set the relevant component attributes. See `useAttribute`.
+Each callback function will be called when appropriate with the element, the
+relevant options and a `asyncRender` function as arguments. The `asyncRender`
+function can be called at any moment with a "state setter" function. This
+returns a thunk function that may accept an argument. When the thunk function is
+called, the "state setter" function is called with the current element and state
+as argument. This function should return a state fragment or false. The state
+fragment is then merged with the current state and set the relevant component
+attributes. See `useAttribute`.
 
 ```js
 window.customElements.define(
@@ -178,8 +191,11 @@ window.customElements.define(
         button.textContent = "Add";
         element.appendChild(span);
         element.appendChild(button);
-        button.addEventListener("click", render((e, { value }) => ({ value: ++value })));
-      }
+        button.addEventListener(
+          "click",
+          render((e, { value }) => ({ value: ++value })),
+        );
+      },
     }),
     (factorize) => {
       factorize((Component, render) => {
@@ -206,16 +222,16 @@ window.customElements.define(
 
         return Component;
       });
-    }
-  )
+    },
+  ),
 );
 ```
 
 ### `useShadow`
 
 Attaches a shadow root to every instance of the Component.
- 
- ```js
+
+```js
 window.customElements.define(
   "iy-demo",
   factorizeComponent(
@@ -224,21 +240,23 @@ window.customElements.define(
       span.textContent = String(value);
     },
     { value: 0 },
-    useShadow({ mode: "open" })
-  )
+    useShadow({ mode: "open" }),
+  ),
 );
- ```
+```
 
 ### `useTemplate`
 
-Automatically appends a clone of a template to the element or the element's shadow root.
+Automatically appends a clone of a template to the element or the element's
+shadow root.
 
-The function accepts a function that must return a template instance or a Promise of a template instance.
-Optionally, the function can also be passed an object as the second argument that is used to define
-children that would be often queried during the render phase.
-The object's values must be a function that will accept the component instance as the first parameter
-and return a child element or node list.
-The elements will be accessible as the `elements` property of the Component instance element.
+The function accepts a function that must return a template instance or a
+Promise of a template instance. Optionally, the function can also be passed an
+object as the second argument that is used to define children that would be
+often queried during the render phase. The object's values must be a function
+that will accept the component instance as the first parameter and return a
+child element or node list. The elements will be accessible as the `elements`
+property of the Component instance element.
 
 ```js
 window.customElements.define(
@@ -252,16 +270,15 @@ window.customElements.define(
     useTemplate(
       () => {
         const t = window.document.createElement("template");
-        t.innerHTML = `<span>0</span><button>Add</button>`
+        t.innerHTML = `<span>0</span><button>Add</button>`;
 
         return t;
       },
       {
         number: (e) => e.shadowRoot.querySelector("span"),
-        addButton: (e) => e.shadowRoot.querySelector("button")
-      }
-    )
+        addButton: (e) => e.shadowRoot.querySelector("button"),
+      },
+    ),
   ),
 );
 ```
-
