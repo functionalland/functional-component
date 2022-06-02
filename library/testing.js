@@ -3,12 +3,11 @@ import { maybeCall, randomUUID } from "./utilities.js";
 export const TestsSymbol = Symbol.for("iy-tests");
 
 export const constructComponent = (Component) => {
-  if (globalThis.Deno) return new Component();
-  else {
+  if ('customElements' in globalThis) {
     const uuid = `iy-${randomUUID()}`;
-    window.customElements.define(uuid, Component);
-    return window.document.createElement(uuid);
-  }
+    globalThis.customElements.define(uuid, Component);
+    return globalThis.document.createElement(uuid);
+  } else return new Component();
 };
 
 /**

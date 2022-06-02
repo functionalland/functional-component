@@ -8,7 +8,7 @@ export function constructComponent<E extends CustomElement>(
   C: Constructor<E>,
 ): E;
 
-export function factorizeSpy<F extends (...xs: Array<unknown>) => unknown>(
+export function factorizeSpy<F extends (...xs: Array<any>) => unknown>(
   f?: F,
 ): [
   F,
@@ -25,7 +25,7 @@ export function factorizeSpy<F extends (...xs: Array<unknown>) => unknown>(
   },
 ];
 
-export function test(name: string, f: () => void, g: () => boolean): void;
+export function test(name: string, f: () => void, g?: () => boolean): void;
 
 export function withDom(
   f: (document: HTMLDocument) => void,

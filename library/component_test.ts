@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "./asserts.js";
 // @deno-types="./component.d.ts"
-import { CustomElement, State } from "./component.d.ts";
+import { CustomElement, HOF, State } from "./component.d.ts";
 import {
   factorizeComponent,
   StateSymbol,
@@ -22,13 +22,13 @@ test(
     const Component = factorizeComponent(renderSpy, { active: false });
 
     const e = constructComponent(Component);
-    e?.connectedCallback();
+    e.connectedCallback && e.connectedCallback();
 
     return deferUntil(null, () => assertRenderSpy.called)
       .then(() => {
         assert(assertRenderSpy.callCount === 1);
         assertRenderSpy(([e, state]) => {
-          assertEquals(e[StateSymbol], state);
+          assertEquals(e.state, state);
         });
       });
   }),
@@ -37,11 +37,12 @@ test(
 test(
   "factorizeComponent: Add a factory",
   withDom(() => {
+    type ComponentState = { active: boolean };
     const [renderSpy, assertRenderSpy] = factorizeSpy<RenderSpyFunction>();
-    const Component = factorizeComponent(
+    const Component = factorizeComponent<ComponentState>(
       renderSpy,
       { active: false },
-      (factorize) => {
+      ((factorize) => {
         factorize((Component, render) => {
           const _connectedCallback = Component.prototype.connectedCallback;
 
@@ -58,11 +59,11 @@ test(
             },
           );
         });
-      },
+      }) as HOF<ComponentState>,
     );
 
     const e = constructComponent(Component);
-    e?.connectedCallback();
+    e.connectedCallback && e.connectedCallback();
 
     return deferUntil(null, () => assertRenderSpy.callCount === 2)
       .then(() => {
@@ -80,14 +81,15 @@ test(
 test(
   "factorizeComponent: Add a contructor",
   withDom(() => {
-    const Component = factorizeComponent(
+    type ComponentState = { active: boolean }
+    const Component = factorizeComponent<ComponentState>(
       () => {},
       { active: false },
-      (_, construct) => {
+      ((_, construct) => {
         construct((e) => {
           e.attachShadow({ mode: "open" });
         });
-      },
+      }) as HOF<ComponentState>,
     );
 
     const e = constructComponent(Component);
@@ -177,13 +179,13 @@ test(
 
     const e = constructComponent(Component);
 
-    e?.adoptedCallback();
+    e.adoptedCallback && e.adoptedCallback();
 
-    e?.attributeChangedCallback("value", null, "42");
+    e.attributeChangedCallback && e.attributeChangedCallback("value", null, "42");
 
-    e?.connectedCallback();
+    e.connectedCallback && e.connectedCallback();
 
-    e?.disconnectedCallback();
+    e.disconnectedCallback && e.disconnectedCallback();
 
     return deferUntilNextFrame()
       .then(() => {
@@ -220,9 +222,9 @@ test(
 test(
   "useTemplate",
   withDom(() => {
+    type ComponentState = { active: boolean, count: number }
     const [renderSpy, assertRenderSpy] = factorizeSpy<RenderSpyFunction>();
-
-    const Component = factorizeComponent(renderSpy, {
+    const Component = factorizeComponent<ComponentState>(renderSpy, {
       active: false,
       count: 0,
     });
@@ -238,18 +240,18 @@ test(
         addButton: (e) => e.querySelector("button"),
         number: (e) => e.querySelector("span"),
       },
-    )((f) => f(Component, renderSpy));
+    )((f) => f(Component, renderSpy) as HOF<ComponentState>);
 
     const e = constructComponent(Component);
 
-    e?.connectedCallback();
+    e.connectedCallback && e.connectedCallback();
 
     return deferUntil(null, () => assertRenderSpy.called)
       .then(() => {
         assert(assertRenderSpy.called);
         assertRenderSpy(([e]) => {
-          assert(e?.elements.addButton);
-          assert(e?.elements.number);
+          assert(e?.elements?.addButton);
+          assert(e?.elements?.number);
         });
       });
   }),
