@@ -31,7 +31,6 @@ export function intersects(xs: Array<unknown>, ys: Array<unknown>): boolean;
 
 export function maybeCall<X, Y, E extends HTMLElement, XS extends Array<X>>(
   f: (e: E, ...xs: XS) => Y,
-  e: E,
   ...xs: XS
 ): Promise<Y | false>;
 

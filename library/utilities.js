@@ -46,9 +46,12 @@ export const intersects = (xs, ys) =>
     ) || false;
 
 export const maybeCall = (f, e, ...xs) => {
-  const p = f && f.call(e, ...xs);
-
-  return (p instanceof Promise ? p : Promise.resolve(p));
+  try {
+    const p = f && f.call(e, ...xs);
+    return (p instanceof Promise ? p : Promise.resolve(p));
+  } catch (e) {
+    return Promise.reject(e);
+  }
 };
 
 export const noop = (..._) => undefined;
