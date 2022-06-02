@@ -25,7 +25,7 @@ export function factorizeSpy<F extends (...xs: Array<unknown>) => unknown>(
   },
 ];
 
-export function test(name: string, f: () => void): void;
+export function test(name: string, f: () => void, g: () => boolean): void;
 
 export function withDom(
   f: (document: HTMLDocument) => void,

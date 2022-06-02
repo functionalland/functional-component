@@ -52,15 +52,18 @@ export const factorizeSpy = (f = () => undefined) => {
   ];
 };
 
-export const test = (name, f) => {
+export const getTests = (h) => globalThis[TestsSymbol]?.get(h)?.entries();
+
+export const test = (name, f, g) => {
+  if (g && !g()) return;
   if (globalThis.Deno && f.length === 0) return globalThis.Deno.test(name, f);
-  if (!window[TestsSymbol]) {
-    window[TestsSymbol] = new Map();
+  if (!globalThis[TestsSymbol]) {
+    globalThis[TestsSymbol] = new Map();
   }
-  let tests = window[TestsSymbol].get(window.location?.href);
+  let tests = globalThis[TestsSymbol].get(globalThis.location?.href);
   if (!tests) {
     tests = new Map();
-    window[TestsSymbol].set(window.location?.href, tests);
+    globalThis[TestsSymbol].set(globalThis.location?.href, tests);
   }
   tests.set(f, { name });
 };
@@ -70,7 +73,15 @@ export const withDom = (f, template = "<div></div>") => {
     globalThis.requestAnimationFrame = (f) => setTimeout(f);
   }
 
-  if (globalThis.HTMLElement) return f;
+  if ('DocumentFragment' in globalThis) {
+    const $t = globalThis.document.createElement('template');
+    $t.innerHTML = template;
+
+    return (e) => {
+      e.appendChild($t.content.cloneNode(true));
+      return () => f(e);
+    };
+  }
 
   return () =>
     Promise.all(
@@ -84,7 +95,7 @@ export const withDom = (f, template = "<div></div>") => {
         globalThis.HTMLElement = class HTMLElement extends Element {};
         globalThis.document = document;
 
-        return maybeCall(f, null, document)
+        return maybeCall(f, document)
           .finally(() => {
             window.HTMLElement = undefined;
             window.document = undefined;
