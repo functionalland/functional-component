@@ -1,61 +1,173 @@
 import { maybeCall, parseSpineCaseToCamelCase } from "./utilities.js";
 
-export const StateSymbol = Symbol.for("iy-state");
+export const StateSymbol = Symbol();
+export const ValidateAttributeSymbol = Symbol();
 
-const asyncRender = (element, render, observedAttributes) =>
-  (setAttribute) =>
-    (event) => {
+export type State = { [k: string]: unknown };
+export type CustomElementConstructor<
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = {
+  new (): E;
+} & { observedAttributes: Array<string> };
+export type CustomElement<S extends State> = HTMLElement & {
+  adoptedCallback?(): void;
+  attributeChangedCallback?(
+    name: string,
+    oldValue: string | null,
+    newValue: string,
+  ): void;
+  connectedCallback?(): void;
+  disconnectedCallback?(): void;
+  elements?: { [k: string]: Node };
+  state: Partial<S>;
+  [StateSymbol]: S;
+  [ValidateAttributeSymbol]?: ValidateAttributeCallback<S, CustomElement<S>>;
+};
+export type AsyncRender<
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = ($e: E, s: S, e: Event) => Partial<S> | void;
+export type AsyncRenderCallback<
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = (f: AsyncRender<S, E>) => (e: Event) => void;
+export type RenderCallback<
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = (e: E, s: S, os?: { [k: string]: unknown }) => void;
+export type ValidateAttributeCallback<
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = (
+  a: {
+    name: string;
+    oldValue: Partial<S>[Extract<keyof Partial<S>, string>];
+    value: Partial<S>[Extract<keyof Partial<S>, string>];
+  },
+  e: CustomElement<S>,
+  s: S,
+) => Partial<S> | boolean;
+
+export type FactorizeCallback<
+  S extends State = State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = (
+  Component: CustomElementConstructor<S, E>,
+  render: RenderCallback<S, E>,
+  s: S,
+) => void;
+export type FactorizeHOF<
+  S extends State = State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = (
+  f: FactorizeCallback<S, E>,
+) => void;
+export type ConstructCallback<
+  S extends State = State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = (e: E) => void;
+export type ConstructHOF<
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = (
+  f: ConstructCallback<S, E>,
+) => void;
+export type HOF<
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+> = (
+  factorize: FactorizeHOF<S, E>,
+  construct: ConstructHOF<S, E>,
+) => void;
+
+export declare enum Callbacks {
+  "adoptedCallback",
+  "attributeChangedCallback",
+  "connectedCallback",
+  "disconnectedCallback",
+}
+
+export type LifeCycleCallback<
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+> =
+  | ((
+    element: E,
+    render: AsyncRenderCallback<S, E>,
+  ) => void)
+  | ((
+    element: E,
+    render: AsyncRenderCallback<S, E>,
+    name: string,
+    oldValue: string,
+    value: string,
+  ) => S | void);
+
+const asyncRender = <
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(
+  element: E,
+  render: RenderCallback<S, E>,
+  observedAttributes: Array<string>,
+) =>
+  (f: AsyncRender<S, E>) =>
+    (event: Event) => {
       if (!observedAttributes) return;
 
-      const state =
-        setAttribute(element, Object.assign({}, element[StateSymbol]), event) ||
-        {};
+      const state = f(element, Object.assign({}, element[StateSymbol]), event);
       let z = false;
 
-      for (const k in state) {
-        const isFromDataset = observedAttributes.includes(`data-${k}`);
-        const isObservedAttribute = isFromDataset ||
-          observedAttributes.includes(k);
+      if (state) {
+        for (const k in state as S) {
+          const isFromDataset = observedAttributes.includes(`data-${k}`);
+          const isObservedAttribute = isFromDataset ||
+            observedAttributes.includes(k);
+          const v = state[k] as unknown as S[Extract<keyof S, string>];
 
-        if (
-          isObservedAttribute &&
-          element.validateAttribute &&
-          !element.validateAttribute(
-            {
-              name: (isFromDataset) ? `data-${k}` : k,
-              oldValue: element[StateSymbol][k],
-              value: state[k],
-            },
-            element,
-            Object.assign({}, element[StateSymbol]),
-          )
-        ) {
-          continue;
+          if (
+            isObservedAttribute &&
+            !element[ValidateAttributeSymbol]?.(
+              {
+                name: (isFromDataset) ? `data-${k}` : k,
+                oldValue: element[StateSymbol][k] as typeof v,
+                value: v,
+              },
+              element,
+              Object.assign({}, element[StateSymbol]),
+            )
+          ) {
+            continue;
+          }
+
+          element[StateSymbol][k] = v as typeof v;
+
+          if (isFromDataset) {
+            element.dataset[k] = String(v);
+          } else if (isObservedAttribute) {
+            element.setAttribute(k, String(v));
+          } else {
+            z = true;
+          }
         }
 
-        element[StateSymbol][k] = state[k];
-
-        if (isFromDataset) {
-          element.dataset[k] = state[k];
-        } else if (isObservedAttribute) {
-          element.setAttribute(k, state[k]);
-        } else {
-          z = true;
+        if (z) {
+          render(element, Object.assign({}, element[StateSymbol]));
         }
-      }
-
-      if (z) {
-        render(element, Object.assign({}, element[StateSymbol]));
       }
     };
 
-const factorizeFunctionalComponentClass = (TargetConstructor = HTMLElement) => (
+const factorizeFunctionalComponentClass = <
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(TargetConstructor = HTMLElement) => (
   class FunctionalComponent extends TargetConstructor {
-    constructor(gs) {
+    constructor(gs: Array<ConstructCallback<S, E>>) {
       super();
 
       for (const g of gs) {
-        g(this);
+        g(this as unknown as E);
       }
 
       return this;
@@ -63,14 +175,19 @@ const factorizeFunctionalComponentClass = (TargetConstructor = HTMLElement) => (
   }
 );
 
-const parseDatasetToState = (d) =>
+const parseDatasetToState = (d: string): string =>
   parseSpineCaseToCamelCase(d.replace(/^data-/, ""));
 
-const wrapRender = (render) => {
+const wrapRender = <
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(
+  render: RenderCallback<S, E>,
+) => {
   const ms = new Map();
   const rs = new Map();
 
-  return (e, s, options) => {
+  return (e: E, s: S, options?: { [k: string]: unknown }) => {
     let ss = ms.get(e);
     let r = rs.get(e);
     if (!ss) {
@@ -175,15 +292,23 @@ const wrapRender = (render) => {
  * );
  * ```
  */
-export const factorizeComponent = (render, state, ...fs) => {
-  const constructors = [], factories = [];
-  const FunctionalComponent = factorizeFunctionalComponentClass();
+export const factorizeComponent = <
+  S extends State = State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(
+  render: RenderCallback<S, E>,
+  state: S,
+  ...fs: Array<HOF<S, E>>
+): CustomElementConstructor<S, E> => {
+  const constructors: Array<ConstructCallback<S, E>> = [];
+  const factories: Array<FactorizeCallback<S, E>> = [];
+  const FunctionalComponent = factorizeFunctionalComponentClass<S, E>();
   const Component = function () {
     return Reflect.construct(
       FunctionalComponent,
       [
         [
-          (e) => {
+          (e: E) => {
             e[StateSymbol] = Object.assign({}, state);
 
             Object.defineProperty(
@@ -204,7 +329,7 @@ export const factorizeComponent = (render, state, ...fs) => {
       ],
       new.target || FunctionalComponent,
     );
-  };
+  } as unknown as CustomElementConstructor<S, E>;
 
   Object.setPrototypeOf(Component.prototype, FunctionalComponent.prototype);
   Object.setPrototypeOf(Component, FunctionalComponent);
@@ -213,8 +338,8 @@ export const factorizeComponent = (render, state, ...fs) => {
 
   for (const f of fs) {
     f(
-      (factorize) => factories.push(factorize),
-      (construct) => constructors.push(construct),
+      (factorize: FactorizeCallback<S, E>) => factories.push(factorize),
+      (construct: ConstructCallback<S, E>) => constructors.push(construct),
     );
   }
 
@@ -257,8 +382,8 @@ export const factorizeComponent = (render, state, ...fs) => {
  *   });
  * ```
  */
-export const fetchTemplate = (templatePath) =>
-  () =>
+export const fetchTemplate = (templatePath: string) =>
+  (): Promise<HTMLTemplateElement | never> =>
     fetch(templatePath)
       .then((response) =>
         response.text().then((t) => {
@@ -333,8 +458,14 @@ export const fetchTemplate = (templatePath) =>
  * );
  * ```
  */
-export const useAttributes = (validateAttribute, map = {}) =>
-  (factorize) => {
+export const useAttributes = <
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(
+  validateAttribute: ValidateAttributeCallback<S, E>,
+  map: { [k in keyof Partial<S>]: (x: string | null) => Partial<S>[k] },
+) =>
+  (factorize: FactorizeHOF<S, E>) => {
     factorize((Component, render) => {
       const _attributeChangedCallback =
         Component.prototype.attributeChangedCallback;
@@ -354,14 +485,26 @@ export const useAttributes = (validateAttribute, map = {}) =>
           attributeChangedCallback: {
             configurable: true,
             enumerable: true,
-            value(name, oldValue, value) {
+            value(
+              this: E,
+              name: string,
+              oldValue: string | null,
+              value: string,
+            ) {
               const state = validateAttribute(
                 {
                   name: name,
-                  oldValue: Reflect.has(map, name)
+                  // Overwrite the type because sometime it's just a string
+                  oldValue: (Reflect.has(map, name)
                     ? map[name](oldValue)
-                    : oldValue,
-                  value: Reflect.has(map, name) ? map[name](value) : value,
+                    : oldValue) as unknown as Partial<
+                      S
+                    >[Extract<keyof Partial<S>, string>],
+                  value: (Reflect.has(map, name)
+                    ? map[name](value)
+                    : value) as unknown as Partial<
+                      S
+                    >[Extract<keyof Partial<S>, string>],
                 },
                 this,
                 Object.assign({}, this[StateSymbol]),
@@ -380,18 +523,19 @@ export const useAttributes = (validateAttribute, map = {}) =>
               );
               if (state) {
                 if (state === true) {
-                  const z = parseDatasetToState(name);
-                  this[StateSymbol][z] = Reflect.has(map, name)
+                  const z = parseDatasetToState(name) as keyof S;
+                  this[StateSymbol][z] = (Reflect.has(map, name)
                     ? map[name](value)
-                    : value;
+                    : value) as unknown as S[Extract<keyof S, string>];
                 } else {
-                  for (const k in state) {
+                  for (const k in state as Partial<S>) {
                     if (!Object.prototype.hasOwnProperty.call(state, k)) {
                       continue;
                     }
 
-                    const z = parseDatasetToState(k);
-                    this[StateSymbol][z] = state[k];
+                    const z = parseDatasetToState(k) as keyof S;
+                    this[StateSymbol][z] =
+                      state[k] as unknown as S[Extract<keyof S, string>];
                   }
                 }
                 render(this, Object.assign({}, this[StateSymbol]), {
@@ -407,22 +551,25 @@ export const useAttributes = (validateAttribute, map = {}) =>
           connectedCallback: {
             configurable: true,
             enumerable: true,
-            value() {
+            value(this: E) {
               return maybeCall(_connectedCallback, this)
                 .then(() => {
                   for (const key of observedAttributes) {
-                    const normalizedKey = parseDatasetToState(key);
+                    const normalizedKey = parseDatasetToState(key) as keyof S;
                     const value = map[normalizedKey]
                       ? map[normalizedKey](
-                        this.getAttribute(key),
+                        this.getAttribute(key) as string,
                       )
                       : this.getAttribute(key);
-                    if (value) this[StateSymbol][normalizedKey] = value;
+                    if (value) {
+                      this[StateSymbol][normalizedKey] =
+                        value as S[Extract<keyof S, string>];
+                    }
                   }
                 });
             },
           },
-          validateAttribute: {
+          [ValidateAttributeSymbol]: {
             configurable: true,
             enumerable: false,
             value: validateAttribute,
@@ -494,8 +641,15 @@ export const useAttributes = (validateAttribute, map = {}) =>
  * );
  * ```
  */
-export const useCallbacks = (callbacks) =>
-  (factorize) => {
+export const useCallbacks = <
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(
+  callbacks: {
+    [K in keyof typeof Callbacks]?: LifeCycleCallback<S, E>;
+  },
+) =>
+  (factorize: FactorizeHOF<S, E>) => {
     factorize((Component, render) => {
       for (const k in callbacks) {
         if (!Object.prototype.hasOwnProperty.call(callbacks, k)) continue;
@@ -509,7 +663,7 @@ export const useCallbacks = (callbacks) =>
           {
             configurable: true,
             enumerable: true,
-            value(...xs) {
+            value(...xs: [string, string, string]) {
               return maybeCall(g, this, ...xs)
                 .then(() =>
                   f(
@@ -531,8 +685,11 @@ export const useCallbacks = (callbacks) =>
     });
   };
 
-export const useProperties = (ps) =>
-  (factorize) => {
+export const useProperties = <
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(ps: Array<string>) =>
+  (factorize: FactorizeHOF<S, E>) => {
     factorize((Component, render) => {
       Object.defineProperties(
         Component.prototype,
@@ -548,7 +705,7 @@ export const useProperties = (ps) =>
                     get() {
                       return this[StateSymbol][name];
                     },
-                    set(v) {
+                    set(v: S[Extract<keyof S, string>]) {
                       this[StateSymbol][name] = v;
                       render(this, Object.assign({}, this[StateSymbol]));
                     },
@@ -579,9 +736,12 @@ export const useProperties = (ps) =>
  * );
  * ```
  */
-export const useShadow = (options = { mode: "open" }) =>
+export const useShadow = <
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(options: ShadowRootInit = { mode: "open" }): HOF<S, E> =>
   (_, contruct) => {
-    contruct((e) => e.attachShadow(options));
+    contruct((e: E) => e.attachShadow(options));
   };
 
 /**
@@ -619,7 +779,13 @@ export const useShadow = (options = { mode: "open" }) =>
  * );
  * ```
  */
-export const useTemplate = (f, map) =>
+export const useTemplate = <
+  S extends State,
+  E extends CustomElement<S> = CustomElement<S>,
+>(
+  f: () => HTMLTemplateElement | Promise<HTMLTemplateElement>,
+  map?: { [k: string]: (e: E) => Node | null },
+): HOF<S, E> =>
   (factorize) => {
     factorize((Component) => {
       const _connectedCallback = Component.prototype.connectedCallback;
@@ -629,10 +795,11 @@ export const useTemplate = (f, map) =>
         {
           configurable: true,
           enumerable: true,
-          value() {
+          value(this: E) {
             return maybeCall(_connectedCallback, this)
               .then(() => maybeCall(f))
               .then((template) => {
+                if (!template) return;
                 (this.shadowRoot || this).appendChild(
                   template.content.cloneNode(true),
                 );
@@ -649,7 +816,9 @@ export const useTemplate = (f, map) =>
 
                   for (const k in map) {
                     if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
-                    this.elements[k] = map[k](this);
+                    const e = map[k](this);
+                    if (!e) continue;
+                    this.elements && (this.elements[k] = e);
                   }
 
                   Object.freeze(this.elements);

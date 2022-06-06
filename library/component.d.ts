@@ -1,5 +1,4 @@
 export const StateSymbol: unique symbol;
-
 export type State = { [k: string]: unknown };
 export type CustomElement<S extends State = {}> = HTMLElement & {
   adoptedCallback?(): void;
@@ -16,10 +15,15 @@ export type CustomElement<S extends State = {}> = HTMLElement & {
 export type Constructor<E extends CustomElement = CustomElement> = {
   new (): E;
 } & { observedAttributes: Array<string> };
-export type FactorizeHOF<S extends State = State, E extends CustomElement = CustomElement> = (
+export type FactorizeHOF<
+  S extends State = State,
+  E extends CustomElement = CustomElement,
+> = (
   f: (Component: Constructor<E>, render: (e: E, s: S) => void) => void,
-) => void
-export type ConstructHOF<E extends CustomElement = CustomElement> = (f: (e: E) => void) => void
+) => void;
+export type ConstructHOF<E extends CustomElement = CustomElement> = (
+  f: (e: E) => void,
+) => void;
 export type HOF<S extends State, E extends CustomElement = CustomElement> = (
   factorize: FactorizeHOF<S, E>,
   construct: ConstructHOF<E>,
@@ -107,7 +111,7 @@ export function useShadow<
 export function useTemplate<
   S extends State,
   E extends CustomElement = CustomElement,
-  X extends Node = Node
+  X extends Node = Node,
 >(
   getTemplate: () => HTMLTemplateElement,
   map?: { [k: string]: (e: E) => X | null },
