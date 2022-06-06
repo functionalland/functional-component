@@ -3,12 +3,11 @@ import { maybeCall, randomUUID } from "./utilities.js";
 export const TestsSymbol = Symbol.for("iy-tests");
 
 export const constructComponent = (Component) => {
-  if (globalThis.Deno) return new Component();
-  else {
+  if ("customElements" in globalThis) {
     const uuid = `iy-${randomUUID()}`;
-    window.customElements.define(uuid, Component);
-    return window.document.createElement(uuid);
-  }
+    globalThis.customElements.define(uuid, Component);
+    return globalThis.document.createElement(uuid);
+  } else return new Component();
 };
 
 /**
@@ -73,8 +72,8 @@ export const withDom = (f, template = "<div></div>") => {
     globalThis.requestAnimationFrame = (f) => setTimeout(f);
   }
 
-  if ('DocumentFragment' in globalThis) {
-    const $t = globalThis.document.createElement('template');
+  if ("DocumentFragment" in globalThis) {
+    const $t = globalThis.document.createElement("template");
     $t.innerHTML = template;
 
     return (e) => {
@@ -85,7 +84,7 @@ export const withDom = (f, template = "<div></div>") => {
 
   return () =>
     Promise.all(
-      ["https://deno.land/x/deno_dom@v0.1.26-alpha/deno-dom-wasm.ts"].map((x) =>
+      ["https://deno.land/x/deno_dom@v0.1.30-alpha/deno-dom-wasm.ts"].map((x) =>
         import(x)
       ),
     )

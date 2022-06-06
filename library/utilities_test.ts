@@ -40,44 +40,44 @@ test("randomUUID", () => {
   assert(s);
 });
 
-test(
-  "renderFor: with appendElement",
-  (te: Element) => {
-    const es = renderFor(
-      te,
-      Array(10).fill(0).map(() => ({ key: randomUUID() })),
-      (_: Element, __: { key: string }, i: number) => {
-        const e = globalThis.document.createElement("div");
-        e.dataset.index = String(i);
-        return e;
-      },
-      appendElement,
-    );
-    assert(es.length === 10);
-    Array.from(te.children).forEach((e: Element, i: number) => {
-      assert((e as HTMLElement).dataset.index === String(i));
-    });
-  },
-);
-
-test(
-  "renderFor: with prependElement",
-  (te: Element) => {
-    renderFor(
-      te,
-      Array(10).fill(0).map(() => ({ key: randomUUID() })),
-      (_: Element, __: { key: string }, i: number) => {
-        const e = globalThis.document.createElement("div");
-        e.dataset.index = String(i);
-        return e;
-      },
-      prependElement,
-    );
-    Array.from(te.children).forEach((e: Element, i: number) => {
-      assert(
-        (e as HTMLElement).dataset.index ===
-          String((te.children.length - 1) - i),
-      );
-    });
-  },
-);
+// test(
+//   "renderFor: with appendElement",
+//   (te: Element) => {
+//     const es = renderFor(
+//       te,
+//       Array(10).fill(0).map(() => ({ key: randomUUID() })),
+//       (_: Element, __: { key: string }, i: number) => {
+//         const e = globalThis.document.createElement("div");
+//         e.dataset.index = String(i);
+//         return e;
+//       },
+//       appendElement,
+//     );
+//     assert(es.length === 10);
+//     Array.from(te.children).forEach((e: Element, i: number) => {
+//       assert((e as HTMLElement).dataset.index === String(i));
+//     });
+//   },
+// );
+//
+// test(
+//   "renderFor: with prependElement",
+//   (te: Element) => {
+//     renderFor(
+//       te,
+//       Array(10).fill(0).map(() => ({ key: randomUUID() })),
+//       (_: Element, __: { key: string }, i: number) => {
+//         const e = globalThis.document.createElement("div");
+//         e.dataset.index = String(i);
+//         return e;
+//       },
+//       prependElement,
+//     );
+//     Array.from(te.children).forEach((e: Element, i: number) => {
+//       assert(
+//         (e as HTMLElement).dataset.index ===
+//           String((te.children.length - 1) - i),
+//       );
+//     });
+//   },
+// );

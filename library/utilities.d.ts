@@ -30,9 +30,9 @@ export function factorizeTemplate(
 export function intersects(xs: Array<unknown>, ys: Array<unknown>): boolean;
 
 export function maybeCall<X, Y, E extends HTMLElement, XS extends Array<X>>(
-  f: (e: E, ...xs: XS) => Y,
+  f: (e: E, ...xs: XS) => Y | Promise<Y>,
   ...xs: XS
-): Promise<Y | false>;
+): Promise<Y | never | false>;
 
 export function noop(..._: Array<unknown>): void;
 

@@ -1,7 +1,6 @@
 export const StateSymbol: unique symbol;
-
 export type State = { [k: string]: unknown };
-export type CustomElement = HTMLElement & {
+export type CustomElement<S extends State = {}> = HTMLElement & {
   adoptedCallback?(): void;
   attributeChangedCallback?(
     name: string,
@@ -11,16 +10,23 @@ export type CustomElement = HTMLElement & {
   connectedCallback?(): void;
   disconnectedCallback?(): void;
   elements?: { [k: string]: HTMLElement };
-  state: Partial<State>;
+  state: Partial<S>;
 };
 export type Constructor<E extends CustomElement = CustomElement> = {
   new (): E;
 } & { observedAttributes: Array<string> };
+export type FactorizeHOF<
+  S extends State = State,
+  E extends CustomElement = CustomElement,
+> = (
+  f: (Component: Constructor<E>, render: (e: E, s: S) => void) => void,
+) => void;
+export type ConstructHOF<E extends CustomElement = CustomElement> = (
+  f: (e: E) => void,
+) => void;
 export type HOF<S extends State, E extends CustomElement = CustomElement> = (
-  factorize: (
-    f: (Component: Constructor<E>, render: (e: E, s: S) => void) => void,
-  ) => void,
-  construct: (f: (e: E) => void) => void,
+  factorize: FactorizeHOF<S, E>,
+  construct: ConstructHOF<E>,
 ) => void;
 export type AsyncRenderCallback<
   S extends State,
@@ -70,7 +76,7 @@ export declare enum Callbacks {
 type ValueOf<T> = T[keyof T];
 
 export function factorizeComponent<
-  S extends State,
+  S extends State = State,
   E extends CustomElement = CustomElement,
 >(
   render: Render<S, E>,
@@ -105,7 +111,8 @@ export function useShadow<
 export function useTemplate<
   S extends State,
   E extends CustomElement = CustomElement,
+  X extends Node = Node,
 >(
   getTemplate: () => HTMLTemplateElement,
-  map?: { [k: string]: (e: E) => CustomElement },
+  map?: { [k: string]: (e: E) => X | null },
 ): HOF<S, E>;
