@@ -1,4 +1,4 @@
-import { maybeCall, parseSpineCaseToCamelCase } from "./utilities.js";
+import { maybeCall, parseSpineCaseToCamelCase } from "./utilities.ts";
 
 export const StateSymbol = Symbol();
 export const ValidateAttributeSymbol = Symbol();
@@ -42,8 +42,8 @@ export type ValidateAttributeCallback<
 > = (
   a: {
     name: string;
-    oldValue: Partial<S>[Extract<keyof Partial<S>, string>];
-    value: Partial<S>[Extract<keyof Partial<S>, string>];
+    oldValue: S[Extract<keyof S, string>];
+    value: S[Extract<keyof S, string>];
   },
   e: CustomElement<S>,
   s: S,
@@ -161,7 +161,7 @@ const asyncRender = <
 const factorizeFunctionalComponentClass = <
   S extends State,
   E extends CustomElement<S> = CustomElement<S>,
->(TargetConstructor = HTMLElement) => (
+>(TargetConstructor = globalThis.HTMLElement) => (
   class FunctionalComponent extends TargetConstructor {
     constructor(gs: Array<ConstructCallback<S, E>>) {
       super();
@@ -356,7 +356,7 @@ export const factorizeComponent = <
       configurable: true,
       enumerable: false,
       value() {
-        return maybeCall(_connectedCallback, this)
+        return maybeCall(() => _connectedCallback.call(this))
           .then((s = {}) => {
             this[StateSymbol] = Object.assign({}, state, s);
             _render(this, this[StateSymbol], {
@@ -497,14 +497,10 @@ export const useAttributes = <
                   // Overwrite the type because sometime it's just a string
                   oldValue: (Reflect.has(map, name)
                     ? map[name](oldValue)
-                    : oldValue) as unknown as Partial<
-                      S
-                    >[Extract<keyof Partial<S>, string>],
+                    : oldValue) as unknown as S[Extract<keyof S, string>],
                   value: (Reflect.has(map, name)
                     ? map[name](value)
-                    : value) as unknown as Partial<
-                      S
-                    >[Extract<keyof Partial<S>, string>],
+                    : value) as unknown as S[Extract<keyof S, string>],
                 },
                 this,
                 Object.assign({}, this[StateSymbol]),
@@ -552,7 +548,7 @@ export const useAttributes = <
             configurable: true,
             enumerable: true,
             value(this: E) {
-              return maybeCall(_connectedCallback, this)
+              return maybeCall(() => _connectedCallback.call(this))
                 .then(() => {
                   for (const key of observedAttributes) {
                     const normalizedKey = parseDatasetToState(key) as keyof S;
@@ -664,7 +660,7 @@ export const useCallbacks = <
             configurable: true,
             enumerable: true,
             value(...xs: [string, string, string]) {
-              return maybeCall(g, this, ...xs)
+              return maybeCall(() => g.call(this, ...xs))
                 .then(() =>
                   f(
                     this,
@@ -796,8 +792,8 @@ export const useTemplate = <
           configurable: true,
           enumerable: true,
           value(this: E) {
-            return maybeCall(_connectedCallback, this)
-              .then(() => maybeCall(f))
+            return maybeCall(() => _connectedCallback.call(this))
+              .then(() => maybeCall<HTMLTemplateElement>(f))
               .then((template) => {
                 if (!template) return;
                 (this.shadowRoot || this).appendChild(

@@ -6,10 +6,8 @@
     "lib": [
       "esnext",
       "dom",
-      "dom.iterable",
-      "dom.asynciterable"
+      "dom.iterable"
     ],
-
-    "strict": true,
+    "strict": true
   }
 }

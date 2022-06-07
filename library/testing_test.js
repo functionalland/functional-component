@@ -1,5 +1,5 @@
-import { assert } from "./asserts.js";
-import { factorizeSpy, test } from "./testing.js";
+import { assert } from "./asserts.ts";
+import { factorizeSpy, test } from "./testing.ts";
 
 test(
   "factorizeSpy",
