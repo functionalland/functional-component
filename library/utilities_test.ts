@@ -1,14 +1,6 @@
-import { assert } from "./asserts.js";
-import { test } from "./testing.js";
-// @deno-types="./utilities.d.ts"
-import {
-  appendElement,
-  deferUntil,
-  deferUntilNextFrame,
-  prependElement,
-  randomUUID,
-  renderFor,
-} from "./utilities.js";
+import { assert } from "./asserts.ts";
+import { test } from "./testing.ts";
+import { deferUntil, deferUntilNextFrame, randomUUID } from "./utilities.ts";
 
 globalThis.requestAnimationFrame = (f: FrameRequestCallback) => setTimeout(f);
 
