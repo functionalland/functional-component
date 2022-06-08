@@ -660,7 +660,7 @@ export const useCallbacks = <
             configurable: true,
             enumerable: true,
             value(...xs: [string, string, string]) {
-              return maybeCall(() => g.call(this, ...xs))
+              return maybeCall(() => g && g.call(this, ...xs))
                 .then(() =>
                   f(
                     this,
@@ -792,7 +792,7 @@ export const useTemplate = <
           configurable: true,
           enumerable: true,
           value(this: E) {
-            return maybeCall(() => _connectedCallback.call(this))
+            return maybeCall(() => _connectedCallback && _connectedCallback.call(this))
               .then(() => maybeCall<HTMLTemplateElement>(f))
               .then((template) => {
                 if (!template) return;
