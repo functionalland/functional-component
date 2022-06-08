@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+r="$(git rev-parse --show-toplevel)"
+
+if [ "$CI" == true ] || [ "$#" -eq 0 ]; then
+    deno test --config "$r/tsconfig.json" --allow-all --no-check --unstable "$r/library/"
+else
+    deno test --config "$r/tsconfig.json" --watch --allow-all --unstable "$@"
+fi
