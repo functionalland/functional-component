@@ -660,7 +660,7 @@ export const useCallbacks = <
             configurable: true,
             enumerable: true,
             value(...xs: [string, string, string]) {
-              return maybeCall(() => g.call(this, ...xs))
+              return maybeCall(() => g && g.call(this, ...xs))
                 .then(() =>
                   f(
                     this,
