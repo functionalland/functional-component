@@ -1,7 +1,7 @@
 import { maybeCall, noop, randomUUID } from "./utilities.ts";
 import { CustomElement, CustomElementConstructor, State } from "./component.ts";
 
-export const TestsSymbol = Symbol();
+export const TestsSymbol = Symbol.for("fc-tests");
 
 export const constructComponent = <
   S extends State,
