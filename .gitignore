@@ -13,3 +13,5 @@ journal/
 *.zip
 
 .todo.md
+
+build/
