@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+set -e
+r="$(git rev-parse --show-toplevel)"
+
+deno run --allow-all --config "$r/tsconfig.json" "$r/scripts/build.ts" "$@"

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+r="$(git rev-parse --show-toplevel)"
+
+if [ "$CI" == true ] || [ "$#" -eq 0 ]; then
+    deno fmt --config "$r/tsconfig.json" "$r/library/"
+else
+    deno fmt --config "$r/tsconfig.json" "$@"
+fi
